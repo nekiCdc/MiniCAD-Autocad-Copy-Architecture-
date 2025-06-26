@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>CocaClick</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    body {
+      margin: 0;
+      background: #0f172a;
+      font-family: 'Arial', sans-serif;
+      color: #fff;
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: 480px;
+      margin: auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .screen { display: none; }
+    .active { display: block; }
+
+    .tap-btn {
+      width: 90vw;
+      height: 90vw;
+      max-width: 360px;
+      max-height: 360px;
+      border-radius: 50%;
+      font-size: 32px;
+      background: #0284c7;
+      color: white;
+      border: none;
+      margin: 30px auto;
+      box-shadow: 0 0 25px #38bdf8;
+    }
+
+    .menu button {
+      background: #1e293b;
+      border: none;
+      color: white;
+      padding: 18px;
+      margin: 10px;
+      border-radius: 16px;
+      font-size: 20px;
+      width: 90%;
+    }
+
+    .nft-item, .shop-item, .market-item {
+      background: #1e293b;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 12px;
+    }
+
+    img.nft-img {
+      max-width: 100%;
+      border-radius: 12px;
+    }
+
+    input, button {
+      font-size: 18px;
+      padding: 8px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .avatar {
+      border-radius: 50%;
+      width: 100px;
+      height: 100px;
+      margin: 10px auto;
+      display: block;
+    }
+
+    .market-form {
+      background: #334155;
+      padding: 10px;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Регистрация -->
+    <div id="registerScreen" class="screen active">
+      <h2>Добро пожаловать в CocaClick</h2>
+      <p>Введи ник и username из Telegram (например, test)</p>
+      <input type="text" id="nickname" placeholder="Никнейм"><br>
+      <input type="text" id="tgusername" placeholder="Telegram юзернейм"><br>
+      <button onclick="register()">Старт</button>
+    </div>
+
+    <!-- Главный экран -->
+    <div id="mainScreen" class="screen">
+      <h2>Привет, <span id="nickDisplay"></span></h2>
+      <p>СС: <span id="coins">0</span></p>
+      <button class="tap-btn" onclick="tap()">👊 ТАП</button>
+      <div class="menu">
+        <button onclick="openScreen('profileScreen')">👤 Профиль</button>
+        <button onclick="openScreen('shopScreen')">🛍 Магазин</button>
+        <button onclick="openScreen('nftScreen')">🎂 NFT</button>
+        <button onclick="openScreen('marketScreen')">🛒 Рынок</button>
+      </div>
+    </div>
+
+    <!-- Профиль -->
+    <div id="profileScreen" class="screen">
+      <h3>👤 Твой профиль</h3>
+      <img id="avatar" class="avatar">
+      <p>Ник: <span id="profileNick"></span></p>
+      <p>@<span id="profileTG"></span></p>
+      <p>Тапов: <span id="profileTaps"></span></p>
+      <button onclick="openScreen('mainScreen')">⬅ Назад</button>
+    </div>
+
+    <!-- Магазин -->
+    <div id="shopScreen" class="screen">
+      <h3>🛍 Улучшения</h3>
+      <div class="shop-item">
+        <p>+1 за тап (100 СС)</p>
+        <button onclick="buyUpgrade(100)">Купить</button>
+      </div>
+      <button onclick="openScreen('mainScreen')">⬅ Назад</button>
+    </div>
+
+    <!-- NFT -->
+    <div id="nftScreen" class="screen">
+      <h3>🎂 NFT-торты</h3>
+      <div class="nft-item">
+        <p>Торт "Bulochka" — 700 СС</p>
+        <img src="https://i.imgur.com/ogXUJEz.png" class="nft-img">
+        <button onclick="buyNFT('Bulochka', 700)">Купить</button>
+      </div>
+      <button onclick="openScreen('mainScreen')">⬅ Назад</button>
+    </div>
+
+    <!-- Рынок -->
+    <div id="marketScreen" class="screen">
+      <h3>🛒 Рынок</h3>
+      <div class="market-form">
+        <select id="nftToSell"></select><br>
+        <input type="number" id="sellPrice" placeholder="Цена в СС">
+        <button onclick="listNFT()">Выставить</button>
+      </div>
+      <div id="marketList"></div>
+      <button onclick="openScreen('mainScreen')">⬅ Назад</button>
+    </div>
+  </div>
+
+  <script>
+    let data = {
+      nickname: '',
+      tgusername: '',
+      coins: 0,
+      taps: 0,
+      power: 1,
+      nfts: [],
+      market: []
+    };
+
+    let afkTimer;
+
+    function save() {
+      localStorage.setItem('cocaclick', JSON.stringify(data));
+    }
+
+    function load() {
+      const saved = localStorage.getItem('cocaclick');
+      if (saved) data = JSON.parse(saved);
+    }
+
+    function register() {
+      const nick = document.getElementById("nickname").value.trim();
+      const tg = document.getElementById("tgusername").value.trim();
+      if (!nick || !tg) return alert("Введи данные");
+      data.nickname = nick;
+      data.tgusername = tg;
+      save();
+      showMain();
+    }
+
+    function showMain() {
+      document.getElementById("nickDisplay").innerText = data.nickname;
+      document.getElementById("coins").innerText = data.coins;
+      document.getElementById("registerScreen").classList.remove("active");
+      document.getElementById("mainScreen").classList.add("active");
+      autoClick();
+    }
+
+    function tap() {
+      data.coins += data.power;
+      data.taps += 1;
+      document.getElementById("coins").innerText = data.coins;
+      save();
+      resetAutoClick();
+    }
+
+    function autoClick() {
+      afkTimer = setInterval(() => {
+        data.coins += data.power;
+        document.getElementById("coins").innerText = data.coins;
+        save();
+      }, 5000);
+    }
+
+    function resetAutoClick() {
+      clearInterval(afkTimer);
+      autoClick();
+    }
+
+    function openScreen(screen) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.getElementById(screen).classList.add("active");
+
+      if (screen === "profileScreen") {
+        document.getElementById("profileNick").innerText = data.nickname;
+        document.getElementById("profileTG").innerText = data.tgusername;
+        document.getElementById("profileTaps").innerText = data.taps;
+        document.getElementById("avatar").src = `https://t.me/i/userpic/320/${data.tgusername}.jpg`;
+      }
+
+      if (screen === "marketScreen") {
+        updateMarket();
+        const select = document.getElementById("nftToSell");
+        select.innerHTML = '';
+        data.nfts.forEach(n => {
+          const opt = document.createElement("option");
+          opt.value = n;
+          opt.innerText = n;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    function buyUpgrade(cost) {
+      if (data.coins >= cost) {
+        data.coins -= cost;
+        data.power += 1;
+        alert("Теперь +"+data.power+" за тап!");
+        document.getElementById("coins").innerText = data.coins;
+        save();
+      } else alert("Недостаточно СС");
+    }
+
+    function buyNFT(name, price) {
+      if (data.coins >= price && !data.nfts.includes(name)) {
+        data.coins -= price;
+        data.nfts.push(name);
+        document.getElementById("coins").innerText = data.coins;
+        alert("Куплен NFT: "+name);
+        save();
+      } else alert("Не хватает или уже куплен");
+    }
+
+    function listNFT() {
+      const name = document.getElementById("nftToSell").value;
+      const price = parseInt(document.getElementById("sellPrice").value);
+      if (!name || isNaN(price) || price <= 0) return alert("Цена не ок");
+      data.market.push({ name, price, seller: data.nickname });
+      data.nfts = data.nfts.filter(n => n !== name);
+      updateMarket();
+      save();
+    }
+
+    function updateMarket() {
+      const list = document.getElementById("marketList");
+      list.innerHTML = '';
+      data.market.forEach((item, i) => {
+        const div = document.createElement("div");
+        div.className = "market-item";
+        div.innerHTML = `
+          <p>${item.name} от ${item.seller} — ${item.price} СС</p>
+          <img src="https://i.imgur.com/ogXUJEz.png" class="nft-img">
+          <button onclick="buyFromMarket(${i})">Купить</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function buyFromMarket(index) {
+      const item = data.market[index];
+      if (data.coins >= item.price) {
+        data.coins -= item.price;
+        data.nfts.push(item.name);
+        data.market.splice(index, 1);
+        updateMarket();
+        document.getElementById("coins").innerText = data.coins;
+        alert("Куплен NFT: "+item.name);
+        save();
+      } else alert("Недостаточно СС");
+    }
+
+    load();
+    if (data.nickname) showMain();
+  </script>
+</body>
+</html>
